@@ -1,6 +1,7 @@
 import express from "express";
 import cors from "cors";
 import dotenv from "dotenv";
+import prisma from "./db.js";
 
 dotenv.config();
 
@@ -19,12 +20,31 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check route
+// Express health check
 app.get("/api/health", (req, res) => {
   res.status(200).json({
     status: "success",
     message: "MealMate backend is running",
   });
+});
+
+// PostgreSQL database health check
+app.get("/api/db-health", async (req, res) => {
+  try {
+    await prisma.$queryRaw`SELECT 1`;
+
+    res.status(200).json({
+      status: "success",
+      message: "PostgreSQL database connected successfully",
+    });
+  } catch (error) {
+    console.error("Database connection error:", error);
+
+    res.status(500).json({
+      status: "error",
+      message: "Database connection failed",
+    });
+  }
 });
 
 // Start server
