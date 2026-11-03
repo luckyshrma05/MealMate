@@ -1,0 +1,109 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  events Event[]
+}
+
+model Event {
+  id          Int      @id @default(autoincrement())
+  name        String
+  eventType   String
+  eventDate   DateTime
+  guestCount  Int
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  userId      Int
+  user        User     @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  eventDishes EventDish[]
+  bufferPercent Float @default(10)
+}
+
+
+model Dish {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  category    String
+  description String?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  recipeIngredients RecipeIngredient[]
+  eventDishes EventDish[]
+  recipeServings Int @default(10)
+}
+
+model Ingredient {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  unit      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  recipeIngredients RecipeIngredient[]
+}
+
+model RecipeIngredient {
+  id           Int        @id @default(autoincrement())
+
+  dishId       Int
+  ingredientId Int
+
+  quantity     Float
+
+  dish         Dish       @relation(fields: [dishId], references: [id])
+  ingredient   Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([dishId, ingredientId])
+}
+
+model EventDish {
+  id              Int      @id @default(autoincrement())
+
+  eventId         Int
+  dishId          Int
+  plannedServings Int
+
+  event           Event    @relation(fields: [eventId], references: [id])
+  dish            Dish     @relation(fields: [dishId], references: [id])
+
+  @@unique([eventId, dishId])
+  @@index([dishId])
+}
+
+model PlanningRule {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  value     Float
+  unit      String
+  updatedAt DateTime @updatedAt
+}
