@@ -163,3 +163,21 @@ export const loginUser = async (req, res) => {
     });
   }
 };
+
+export const getCurrentUser = (req, res) => {
+  return res.status(200).json({
+    message: "Authenticated user retrieved successfully",
+    user: req.user,
+  });
+};
+
+export const adminCheck = (req, res) => {
+  return res.status(200).json({
+    message: "Admin access granted",
+    user: {
+      id: req.user.id,
+      name: req.user.name,
+      role: req.user.role,
+    },
+  });
+};
