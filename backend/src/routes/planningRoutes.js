@@ -1,0 +1,10 @@
+import {Router} from 'express';
+import {authenticate} from '../middleware/authMiddleware.js';
+import {authorizeRoles} from '../middleware/roleMiddleware.js';
+import {getRules,upsertRule,setDishServings} from '../controllers/planningController.js';
+const router=Router();
+router.use(authenticate);
+router.get('/rules',getRules);
+router.put('/rules',authorizeRoles('ADMIN'),upsertRule);
+router.put('/dishes/:id/servings',authorizeRoles('ADMIN'),setDishServings);
+export default router;
