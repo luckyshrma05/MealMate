@@ -1,0 +1,300 @@
+.consumption-page {
+    padding: 28px;
+    color: #1f2937;
+}
+
+.consumption-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+}
+
+.consumption-heading h1 {
+    font-size: 27px;
+    margin: 0 0 7px;
+}
+
+.consumption-heading p,
+.consumption-records-heading p {
+    color: #6b7280;
+    margin: 0;
+    font-size: 14px;
+}
+
+.consumption-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(175px, 1fr));
+    gap: 16px;
+    margin-bottom: 26px;
+}
+
+.consumption-stat {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 19px;
+    box-shadow: 0 2px 7px rgba(0, 0, 0, 0.035);
+}
+
+.consumption-stat span {
+    color: #6b7280;
+    font-size: 13px;
+}
+
+.consumption-stat h2 {
+    font-size: 22px;
+    margin: 12px 0 0;
+    overflow-wrap: anywhere;
+}
+
+.consumption-stat small {
+    display: block;
+    margin-top: 7px;
+    color: #9ca3af;
+    font-size: 11px;
+}
+
+.consumption-form-section,
+.consumption-records-section {
+    background: #fff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 24px;
+    margin-bottom: 24px;
+}
+
+.consumption-form-section h2,
+.consumption-records-section h2 {
+    margin: 0 0 21px;
+    font-size: 19px;
+}
+
+.consumption-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 18px;
+}
+
+.consumption-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.consumption-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #374151;
+}
+
+.consumption-field input,
+.consumption-field select,
+.consumption-filters input {
+    width: 100%;
+    min-width: 0;
+    padding: 11px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 13px;
+    outline: none;
+    background: #fff;
+    box-sizing: border-box;
+}
+
+.consumption-field input:focus,
+.consumption-field select:focus,
+.consumption-filters input:focus {
+    border-color: #2563eb;
+}
+
+.consumption-field input[readonly] {
+    background: #f9fafb;
+    color: #6b7280;
+}
+
+.consumption-calculations {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 12px;
+    background: #f9fafb;
+    padding: 17px;
+    border-radius: 8px;
+    margin-top: 22px;
+}
+
+.consumption-calculations div {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.consumption-calculations span {
+    font-size: 12px;
+    color: #6b7280;
+}
+
+.consumption-calculations strong {
+    font-size: 15px;
+    color: #111827;
+}
+
+.consumption-form-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.consumption-form-actions button,
+.consumption-filters button {
+    border: none;
+    border-radius: 6px;
+    padding: 11px 19px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.consumption-save-btn {
+    background: #2563eb;
+    color: #fff;
+}
+
+.consumption-save-btn:hover {
+    background: #1d4ed8;
+}
+
+.consumption-cancel-btn {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.consumption-records-heading {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 18px;
+    margin-bottom: 20px;
+}
+
+.consumption-records-heading h2 {
+    margin-bottom: 7px;
+}
+
+.consumption-filters {
+    display: flex;
+    gap: 9px;
+    align-items: center;
+}
+
+.consumption-filters input {
+    width: 190px;
+}
+
+.consumption-filters button {
+    background: #e5e7eb;
+    color: #374151;
+}
+
+.consumption-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.consumption-table {
+    width: 100%;
+    border-collapse: collapse;
+    min-width: 1000px;
+    font-size: 13px;
+}
+
+.consumption-table th {
+    background: #f9fafb;
+    color: #4b5563;
+    font-weight: 600;
+    text-align: left;
+}
+
+.consumption-table th,
+.consumption-table td {
+    padding: 14px 12px;
+    border-bottom: 1px solid #e5e7eb;
+    white-space: nowrap;
+}
+
+.consumption-table td {
+    color: #374151;
+}
+
+.consumption-actions {
+    display: flex;
+    gap: 7px;
+}
+
+.consumption-actions button {
+    border: none;
+    background: #eff6ff;
+    color: #2563eb;
+    padding: 7px 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 12px;
+}
+
+.consumption-actions .consumption-delete-btn {
+    background: #fef2f2;
+    color: #dc2626;
+}
+
+.consumption-empty {
+    text-align: center;
+    color: #9ca3af !important;
+    padding: 28px !important;
+}
+
+@media (max-width: 900px) {
+    .consumption-records-heading {
+        flex-direction: column;
+    }
+
+    .consumption-filters {
+        width: 100%;
+        flex-wrap: wrap;
+    }
+
+    .consumption-filters input {
+        flex: 1;
+    }
+
+    .consumption-calculations {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .consumption-page {
+        padding: 16px;
+    }
+
+    .consumption-form-section,
+    .consumption-records-section {
+        padding: 16px;
+    }
+
+    .consumption-form-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .consumption-calculations {
+        grid-template-columns: 1fr 1fr;
+    }
+
+    .consumption-filters {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .consumption-filters input {
+        width: 100%;
+    }
+}
