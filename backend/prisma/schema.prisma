@@ -1,0 +1,164 @@
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  USER
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(USER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events Event[]
+}
+
+model Event {
+  id            Int      @id @default(autoincrement())
+  name          String
+  eventType     String
+  eventDate     DateTime
+  guestCount    Int
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  userId        Int
+  bufferPercent Float    @default(10)
+
+  user              User               @relation(fields: [userId], references: [id])
+  eventDishes       EventDish[]
+  quotations        Quotation[]
+  consumptionRecords ConsumptionRecord[]
+
+  @@index([userId])
+}
+
+model Dish {
+  id               Int      @id @default(autoincrement())
+  name             String   @unique
+  category         String
+  description      String?
+  isActive         Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  recipeServings   Int      @default(10)
+
+  recipeIngredients RecipeIngredient[]
+  eventDishes       EventDish[]
+  consumptionRecords ConsumptionRecord[]
+}
+
+model Ingredient {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  unit      String
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  recipeIngredients RecipeIngredient[]
+  price             IngredientPrice?
+}
+
+model RecipeIngredient {
+  id           Int        @id @default(autoincrement())
+  dishId       Int
+  ingredientId Int
+  quantity     Float
+
+  dish       Dish       @relation(fields: [dishId], references: [id])
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id])
+
+  @@unique([dishId, ingredientId])
+}
+
+model EventDish {
+  id              Int @id @default(autoincrement())
+  eventId         Int
+  dishId          Int
+  plannedServings Int
+
+  event Event @relation(fields: [eventId], references: [id])
+  dish  Dish  @relation(fields: [dishId], references: [id])
+
+  @@unique([eventId, dishId])
+  @@index([dishId])
+}
+
+model PlanningRule {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique
+  value     Float
+  unit      String
+  updatedAt DateTime @updatedAt
+}
+
+// Backend B: current ingredient pricing
+model IngredientPrice {
+  id           Int      @id @default(autoincrement())
+  ingredientId Int      @unique
+  pricePerUnit Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+// Backend B: quotations and historical price snapshots
+model Quotation {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  totalCost Float
+  createdAt DateTime @default(now())
+
+  event Event           @relation(fields: [eventId], references: [id])
+  items QuotationItem[]
+
+  @@index([eventId])
+}
+
+model QuotationItem {
+  id             Int     @id @default(autoincrement())
+  quotationId    Int
+  ingredientName String
+  quantity       Float
+  unit           String
+  pricePerUnit   Float
+  lineTotal      Float
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+// Backend B: consumption and waste tracking
+model ConsumptionRecord {
+  id                 Int      @id @default(autoincrement())
+  eventId            Int
+  dishId             Int
+  unit               String
+  prepared           Float
+  consumed           Float
+  enteredLeftover    Float?
+  calculatedLeftover Float
+  wastePercentage    Float
+  leftoverMismatch   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  dish  Dish  @relation(fields: [dishId], references: [id])
+
+  @@index([eventId])
+  @@index([dishId])
+}

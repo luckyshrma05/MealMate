@@ -1,0 +1,10 @@
+{
+  "name": "backend-b",
+  "version": "1.0.0",
+  "description": "MealMate Backend B services",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test tests/*.test.js"
+  },
+  "type": "commonjs"
+}
