@@ -1,40 +1,42 @@
-import { useState } from 'react';
+import { useState, useContext } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/authService';
-import { useContext } from 'react';
 import { AuthContext } from '../context/authContext';
 
-const auth = useContext(AuthContext);
-
 export default function Login() {
+  // CORRECT: Hooks must be inside the component function
   const navigate = useNavigate();
+  const auth = useContext(AuthContext);
+  
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
-  e.preventDefault();
-  setIsLoading(true);
-  setError('');
+    e.preventDefault();
+    setIsLoading(true);
+    setError('');
 
-  try {
-    const data = await loginUser(email, password);
-    if (data.token && data.user) {
-      auth?.login(data.token, data.user);
-     
-      if (data.user.role === 'ADMIN') {
-         navigate('/admin'); 
-      } else {
-         navigate('/dashboard'); 
+    try {
+      const data = await loginUser(email, password);
+      
+      if (data.token && data.user) {
+        auth?.login(data.token, data.user);
+        
+        // Redirect based on the role returned by the backend
+        if (data.user.role === 'ADMIN') {
+           navigate('/admin'); // Routes to Vipul's workspace
+        } else {
+           navigate('/dashboard'); // Routes to your workspace
+        }
       }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid email or password');
+    } finally {
+      setIsLoading(false);
     }
-  } catch (err: any) {
-    setError(err.response?.data?.message || 'Invalid email or password');
-  } finally {
-    setIsLoading(false);
-  }
-};
+  };
 
   return (
     <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ccc', borderRadius: '8px' }}>
