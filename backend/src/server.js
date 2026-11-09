@@ -9,6 +9,12 @@ import {dishRoutes,ingredientRoutes} from './routes/catalogRoutes.js';
 import planningRoutes from './routes/planningRoutes.js';
 import calculationRoutes from './routes/calculationRoutes.js';
 
+import pricingRoutes from './routes/backendB/pricingRoutes.js';
+import costRoutes from './routes/backendB/costing/costRoutes.js';
+import quotationRoutes from './routes/backendB/quotations/quotationRoutes.js';
+import consumptionRoutes from './routes/backendB/consumption/consumptionRoutes.js';
+import reportRoutes from './routes/backendB/reports/reportRoutes.js';
+
 dotenv.config();
 const app=express();
 const PORT=process.env.PORT || 5000;
@@ -21,6 +27,12 @@ app.use('/api/dishes',dishRoutes);
 app.use('/api/ingredients',ingredientRoutes);
 app.use('/api/planning',planningRoutes);
 app.use('/api/calculate',calculationRoutes);
+app.use('/api/prices', pricingRoutes);
+app.use('/api/calculate/cost', costRoutes);
+app.use('/api/quotations', quotationRoutes);
+app.use('/api/consumption', consumptionRoutes);
+app.use('/api/reports', reportRoutes);
+
 app.get('/',(_req,res)=>res.json({message:'Welcome to MealMate API'}));
 app.get('/api/health',(_req,res)=>res.status(200).json({status:'success',message:'MealMate backend is running'}));
 app.get('/api/db-health',async(_req,res)=>{

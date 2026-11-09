@@ -45,6 +45,8 @@ model Event {
   @@index([userId])
   eventDishes EventDish[]
   bufferPercent Float @default(10)
+  quotations Quotation[]
+  consumptionRecords ConsumptionRecord[]
 }
 
 
@@ -59,6 +61,7 @@ model Dish {
   recipeIngredients RecipeIngredient[]
   eventDishes EventDish[]
   recipeServings Int @default(10)
+  consumptionRecords ConsumptionRecord[]
 }
 
 model Ingredient {
@@ -69,6 +72,7 @@ model Ingredient {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
   recipeIngredients RecipeIngredient[]
+  price IngredientPrice?
 }
 
 model RecipeIngredient {
@@ -105,4 +109,63 @@ model PlanningRule {
   value     Float
   unit      String
   updatedAt DateTime @updatedAt
+}
+
+model IngredientPrice {
+  id           Int      @id @default(autoincrement())
+  ingredientId Int      @unique
+  pricePerUnit Float
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ingredient Ingredient @relation(fields: [ingredientId], references: [id], onDelete: Cascade)
+}
+
+
+model Quotation {
+  id        Int      @id @default(autoincrement())
+  eventId   Int
+  totalCost Float
+  createdAt DateTime @default(now())
+
+  event Event           @relation(fields: [eventId], references: [id])
+  items QuotationItem[]
+
+  @@index([eventId])
+}
+
+
+model QuotationItem {
+  id             Int     @id @default(autoincrement())
+  quotationId    Int
+  ingredientName String
+  quantity       Float
+  unit           String
+  pricePerUnit   Float
+  lineTotal      Float
+
+  quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
+
+  @@index([quotationId])
+}
+
+
+model ConsumptionRecord {
+  id                 Int      @id @default(autoincrement())
+  eventId            Int
+  dishId             Int
+  unit               String
+  prepared           Float
+  consumed           Float
+  enteredLeftover    Float?
+  calculatedLeftover Float
+  wastePercentage    Float
+  leftoverMismatch   Boolean  @default(false)
+  createdAt          DateTime @default(now())
+
+  event Event @relation(fields: [eventId], references: [id])
+  dish  Dish  @relation(fields: [dishId], references: [id])
+
+  @@index([eventId])
+  @@index([dishId])
 }
