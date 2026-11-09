@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { loginUser } from '../services/authService';
 import { useContext } from 'react';
 import { AuthContext } from '../context/authContext';
-// ... inside your component
+
 const auth = useContext(AuthContext);
 
 export default function Login() {
@@ -22,11 +22,11 @@ export default function Login() {
     const data = await loginUser(email, password);
     if (data.token && data.user) {
       auth?.login(data.token, data.user);
-      // Redirect using the role returned by the backend
+     
       if (data.user.role === 'ADMIN') {
-         navigate('/admin'); // Vipul's area
+         navigate('/admin'); 
       } else {
-         navigate('/dashboard'); // Your area
+         navigate('/dashboard'); 
       }
     }
   } catch (err: any) {

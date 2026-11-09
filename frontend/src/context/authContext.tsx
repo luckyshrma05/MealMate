@@ -1,5 +1,5 @@
 import { createContext, useState, useEffect, ReactNode } from 'react';
-import { User } from '../types';
+import { User } from "../types";
 import api from '../services/api';
 
 interface AuthContextType {
@@ -25,12 +25,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       
       try {
-        // Fetch the user data using the getCurrentUser endpoint
+        
         const response = await api.get('/auth/me');
         setUser(response.data.user);
       } catch (error) {
         console.error("Session expired or invalid token", error);
-        logout(); // Fulfills the expired session handling requirement
+        logout(); 
       } finally {
         setIsLoading(false);
       }

@@ -3,7 +3,9 @@ import { AuthProvider } from './context/authContext';
 import { ProtectedRoute } from './components/ProtectedRoutes';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-
+import CreateEvent from './pages/createEvent';
+import SelectDishes from './pages/selectDishes';
+  
 function App() {
   return (
     <AuthProvider>
@@ -17,6 +19,17 @@ function App() {
             </ProtectedRoute>
           } />
           
+          <Route path="/create-event" element={
+            <ProtectedRoute>
+              <CreateEvent />
+            </ProtectedRoute>
+          } />
+
+          <Route path="/events/:eventId/dishes" element={
+              <ProtectedRoute>
+                  <SelectDishes />
+              </ProtectedRoute>
+          } />
         </Routes>
       </BrowserRouter>
     </AuthProvider>
