@@ -1,10 +1,21 @@
 {
-  "dependencies": {
-    "@neon/config": "^1.13.0",
-    "@neon/env": "^2.1.0"
-  },
+  "name": "sem-project",
+  "version": "1.0.0",
+  "description": "MealMate is a rule-based catering management application designed to help catering businesses plan food quantities, estimate ingredient requirements, calculate costs, and monitor food waste.",
+  "main": "index.js",
   "scripts": {
-    "build": "npm --prefix backend run build",
-    "start": "npm --prefix backend start"
-  }
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/luckyshrma05/MealMate.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/luckyshrma05/MealMate/issues"
+  },
+  "homepage": "https://github.com/luckyshrma05/MealMate#readme"
 }

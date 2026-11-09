@@ -1,0 +1,258 @@
+.configuration-page {
+    padding: 30px;
+    color: #1f2937;
+}
+
+.configuration-heading {
+    margin-bottom: 25px;
+}
+
+.configuration-heading h1 {
+    margin: 0 0 8px;
+    color: #1c2e5b;
+    font-size: 28px;
+}
+
+.configuration-heading p,
+.configuration-description {
+    color: #64748b;
+    margin: 0;
+}
+
+.configuration-stats {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-bottom: 25px;
+}
+
+.configuration-stat-card,
+.configuration-card,
+.configuration-empty {
+    padding: 23px;
+    background: #fff;
+    border: 1px solid #dce5f0;
+    border-radius: 12px;
+    box-shadow: 0 3px 10px rgba(20, 40, 80, 0.04);
+}
+
+.configuration-stat-card {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.configuration-stat-card span,
+.configuration-summary span {
+    color: #64748b;
+    font-size: 14px;
+}
+
+.configuration-stat-card strong {
+    color: #1c2e5b;
+    font-size: 27px;
+}
+
+.configuration-card {
+    margin-bottom: 25px;
+}
+
+.configuration-card h2 {
+    margin: 0 0 22px;
+    color: #1c2e5b;
+    font-size: 21px;
+}
+
+.configuration-form-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 20px;
+}
+
+.configuration-field {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.configuration-field label {
+    font-size: 13px;
+    font-weight: 600;
+    color: #344054;
+}
+
+.configuration-field input,
+.configuration-field select {
+    width: 100%;
+    height: 44px;
+    padding: 0 12px;
+    border: 1px solid #cbd5e1;
+    border-radius: 7px;
+    color: #263449;
+    background: white;
+    font-size: 14px;
+    box-sizing: border-box;
+}
+
+.configuration-field input:focus,
+.configuration-field select:focus {
+    outline: none;
+    border-color: #3678f6;
+    box-shadow: 0 0 0 2px rgba(54, 120, 246, 0.12);
+}
+
+.configuration-field input[readonly] {
+    background: #f8fafc;
+}
+
+.configuration-field small {
+    color: #64748b;
+    font-size: 12px;
+}
+
+.configuration-info {
+    margin-top: 22px;
+    padding: 17px;
+    border-radius: 8px;
+    background: #f3f7ff;
+    color: #344b73;
+    font-size: 14px;
+}
+
+.configuration-info p {
+    margin: 8px 0 0;
+    line-height: 1.6;
+}
+
+.configuration-actions {
+    display: flex;
+    gap: 10px;
+    margin-top: 22px;
+}
+
+.configuration-primary-button,
+.configuration-reset-button {
+    padding: 12px 17px;
+    border: 0;
+    border-radius: 7px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.configuration-primary-button {
+    color: white;
+    background: #3678f6;
+}
+
+.configuration-reset-button {
+    color: #344054;
+    background: #eef0f3;
+}
+
+.configuration-summary {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 18px;
+    margin-top: 22px;
+    padding: 20px;
+    background: #f6f8fb;
+    border-radius: 9px;
+}
+
+.configuration-summary div {
+    display: flex;
+    flex-direction: column;
+    gap: 9px;
+    min-width: 0;
+}
+
+.configuration-summary strong {
+    color: #1c2e5b;
+    font-size: 19px;
+    overflow-wrap: anywhere;
+}
+
+.configuration-subheading {
+    margin: 25px 0 15px;
+    color: #1c2e5b;
+    font-size: 17px;
+}
+
+.configuration-table-wrapper {
+    width: 100%;
+    overflow-x: auto;
+}
+
+.configuration-table {
+    width: 100%;
+    border-collapse: collapse;
+    text-align: left;
+    font-size: 14px;
+}
+
+.configuration-table th {
+    padding: 15px;
+    color: #475569;
+    background: #f1f5f9;
+    white-space: nowrap;
+}
+
+.configuration-table td {
+    padding: 16px 15px;
+    border-bottom: 1px solid #e2e8f0;
+    white-space: nowrap;
+}
+
+.configuration-footnote {
+    margin-top: 15px;
+    color: #64748b;
+    font-size: 12px;
+    line-height: 1.6;
+}
+
+.configuration-empty {
+    color: #64748b;
+    line-height: 1.6;
+}
+
+.configuration-empty h2 {
+    color: #1c2e5b;
+}
+
+.configuration-message {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+    padding: 13px 16px;
+    margin-bottom: 20px;
+    background: #eef6ff;
+    border: 1px solid #c9ddff;
+    border-radius: 8px;
+    color: #2455a5;
+    font-size: 14px;
+}
+
+.configuration-message button {
+    border: 0;
+    background: transparent;
+    color: inherit;
+    font-size: 20px;
+    cursor: pointer;
+}
+
+@media (max-width: 750px) {
+    .configuration-page {
+        padding: 16px;
+    }
+
+    .configuration-stats,
+    .configuration-form-grid,
+    .configuration-summary {
+        grid-template-columns: 1fr;
+    }
+
+    .configuration-actions {
+        flex-wrap: wrap;
+    }
+}
