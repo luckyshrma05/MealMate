@@ -14,11 +14,41 @@ import "./QuotationsPage.css";
 
 type QuotationStatus = "Draft" | "Sent" | "Accepted" | "Rejected";
 
+interface Ingredient {
+    id?: string;
+    name: string;
+    category?: string;
+    unit: string;
+    supplier?: string;
+    price: number;
+}
+
+interface RecipeIngredient {
+    ingredientName: string;
+    quantity: number;
+}
+
+interface Recipe {
+    id: string;
+    name: string;
+    category: string;
+    servings: number;
+    notes?: string;
+    ingredients: RecipeIngredient[];
+    createdAt?: string;
+}
+
+interface ServingStandard {
+    recipeId: string;
+    bufferPercentage: number;
+}
+
 type MenuItem = {
     id: number;
     name: string;
     quantity: number;
     rate: number;
+    recipeId?: string;
 };
 
 type Quotation = {
@@ -47,7 +77,27 @@ type QuotationForm = {
     items: MenuItem[];
 };
 
+interface IngredientCostDetail {
+    ingredientName: string;
+    requiredQuantity: number;
+    unit: string;
+    unitPrice: number;
+    totalCost: number;
+    priceAvailable: boolean;
+}
+
+interface RecipeCostDetail {
+    recipeName: string;
+    bufferPercentage: number;
+    ingredients: IngredientCostDetail[];
+    totalCost: number;
+    complete: boolean;
+}
+
 const STORAGE_KEY = "mealmate_quotations";
+const INGREDIENTS_KEY = "mealmate_ingredients";
+const RECIPES_KEY = "mealmate_recipes";
+const STANDARDS_KEY = "mealmate_serving_standards";
 
 const emptyForm: QuotationForm = {
     customerName: "",
@@ -57,14 +107,7 @@ const emptyForm: QuotationForm = {
     venue: "",
     guests: "",
     notes: "",
-    items: [
-        {
-            id: Date.now(),
-            name: "",
-            quantity: 1,
-            rate: 0,
-        },
-    ],
+    items: [{ id: Date.now(), name: "", quantity: 1, rate: 0 }],
 };
 
 const statuses: QuotationStatus[] = [
@@ -92,41 +135,157 @@ function formatDate(date: string) {
     });
 }
 
-function QuotationsPage() {
-    // Load quotations from localStorage.
-    const [quotations, setQuotations] = useState<Quotation[]>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            const parsed = saved ? JSON.parse(saved) : [];
+function readStorage<T>(key: string, fallback: T): T {
+    try {
+        const saved = localStorage.getItem(key);
+        return saved ? JSON.parse(saved) as T : fallback;
+    } catch {
+        return fallback;
+    }
+}
 
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
-    });
+function QuotationsPage() {
+    const [quotations, setQuotations] = useState<Quotation[]>(() =>
+        readStorage<Quotation[]>(STORAGE_KEY, [])
+    );
+
+    const [ingredients] = useState<Ingredient[]>(() =>
+        readStorage<Ingredient[]>(INGREDIENTS_KEY, [])
+    );
+
+    const [recipes] = useState<Recipe[]>(() =>
+        readStorage<Recipe[]>(RECIPES_KEY, [])
+    );
+
+    const [servingStandards] = useState<ServingStandard[]>(() =>
+        readStorage<ServingStandard[]>(STANDARDS_KEY, [])
+    );
 
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [selectedId, setSelectedId] = useState<number | null>(null);
 
-    const [formData, setFormData] =
-        useState<QuotationForm>(emptyForm);
-
+    const [formData, setFormData] = useState<QuotationForm>(emptyForm);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState("All");
     const [error, setError] = useState("");
 
-    // Persist quotations.
     useEffect(() => {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(quotations));
     }, [quotations]);
 
-    // Calculate quotation totals.
     const getTotal = (items: MenuItem[]) =>
         items.reduce(
             (total, item) => total + item.quantity * item.rate,
             0
         );
+
+    // Find the configured buffer for a recipe.
+    const getBuffer = (recipeId: string) => {
+        const standard = servingStandards.find(
+            (item) => item.recipeId === recipeId
+        );
+
+        return standard?.bufferPercentage ?? 10;
+    };
+
+    // Calculate the ingredient requirements and food cost for a recipe.
+    const getRecipeCost = (
+        recipeId: string,
+        servingsRequired: number
+    ): RecipeCostDetail | null => {
+        const recipe = recipes.find((item) => item.id === recipeId);
+
+        if (!recipe || !recipe.servings || recipe.servings <= 0) {
+            return null;
+        }
+
+        const buffer = getBuffer(recipeId);
+
+        const ingredientDetails: IngredientCostDetail[] =
+            recipe.ingredients.map((recipeIngredient) => {
+                const matchedIngredient = ingredients.find(
+                    (ingredient) =>
+                        ingredient.name.trim().toLowerCase() ===
+                        recipeIngredient.ingredientName.trim().toLowerCase()
+                );
+
+                const requiredQuantity =
+                    (recipeIngredient.quantity / recipe.servings) *
+                    servingsRequired *
+                    (1 + buffer / 100);
+
+                const priceAvailable =
+                    matchedIngredient !== undefined &&
+                    Number.isFinite(matchedIngredient.price);
+
+                const unitPrice = priceAvailable
+                    ? matchedIngredient.price
+                    : 0;
+
+                return {
+                    ingredientName: recipeIngredient.ingredientName,
+                    requiredQuantity,
+                    unit: matchedIngredient?.unit ?? "",
+                    unitPrice,
+                    totalCost: requiredQuantity * unitPrice,
+                    priceAvailable,
+                };
+            });
+
+        const complete = ingredientDetails.every(
+            (item) => item.priceAvailable
+        );
+
+        return {
+            recipeName: recipe.name,
+            bufferPercentage: buffer,
+            ingredients: ingredientDetails,
+            totalCost: ingredientDetails.reduce(
+                (total, item) => total + item.totalCost,
+                0
+            ),
+            complete,
+        };
+    };
+
+    // Cost details for one quotation menu item.
+    const getMenuItemCost = (item: MenuItem) => {
+        if (!item.recipeId) return null;
+
+        return getRecipeCost(item.recipeId, item.quantity);
+    };
+
+    // Aggregate food cost across quotation items.
+    const getQuotationCost = (items: MenuItem[]) => {
+        const linkedItems = items.filter((item) => item.recipeId);
+
+        const details = linkedItems.map((item) => ({
+            item,
+            cost: getMenuItemCost(item),
+        }));
+
+        const totalCost = details.reduce(
+            (total, entry) => total + (entry.cost?.totalCost ?? 0),
+            0
+        );
+
+        const complete =
+            linkedItems.length > 0 &&
+            details.every((entry) => entry.cost?.complete);
+
+        const unlinkedCount = items.filter(
+            (item) => !item.recipeId
+        ).length;
+
+        return {
+            details,
+            totalCost,
+            complete,
+            unlinkedCount,
+            linkedCount: linkedItems.length,
+        };
+    };
 
     const totalQuotations = quotations.length;
 
@@ -142,7 +301,6 @@ function QuotationsPage() {
         .filter((q) => q.status === "Accepted")
         .reduce((total, q) => total + getTotal(q.items), 0);
 
-    // Search and filter.
     const filteredQuotations = useMemo(() => {
         return quotations.filter((q) => {
             const search = searchTerm.toLowerCase();
@@ -163,7 +321,6 @@ function QuotationsPage() {
         (q) => q.id === selectedId
     );
 
-    // Form helpers.
     const resetForm = () => {
         setFormData({
             ...emptyForm,
@@ -193,11 +350,9 @@ function QuotationsPage() {
             ...previous,
             [field]: value,
         }));
-
         setError("");
     };
 
-    // Menu item management.
     const addMenuItem = () => {
         setFormData((previous) => ({
             ...previous,
@@ -215,7 +370,7 @@ function QuotationsPage() {
 
     const updateMenuItem = (
         id: number,
-        field: keyof Omit<MenuItem, "id">,
+        field: "name" | "quantity" | "rate",
         value: string
     ) => {
         setFormData((previous) => ({
@@ -234,6 +389,25 @@ function QuotationsPage() {
         setError("");
     };
 
+    const selectRecipe = (id: number, recipeId: string) => {
+        const recipe = recipes.find((item) => item.id === recipeId);
+
+        setFormData((previous) => ({
+            ...previous,
+            items: previous.items.map((item) =>
+                item.id === id
+                    ? {
+                        ...item,
+                        recipeId: recipeId || undefined,
+                        name: recipe ? recipe.name : item.name,
+                    }
+                    : item
+            ),
+        }));
+
+        setError("");
+    };
+
     const removeMenuItem = (id: number) => {
         setFormData((previous) => ({
             ...previous,
@@ -241,7 +415,6 @@ function QuotationsPage() {
         }));
     };
 
-    // Create or update quotation.
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
@@ -272,7 +445,7 @@ function QuotationsPage() {
         const invalidItem = formData.items.some(
             (item) =>
                 !item.name.trim() ||
-                !Number.isFinite(item.quantity) ||
+                !Number.isInteger(item.quantity) ||
                 !Number.isFinite(item.rate) ||
                 item.quantity <= 0 ||
                 item.rate <= 0
@@ -280,7 +453,7 @@ function QuotationsPage() {
 
         if (invalidItem) {
             setError(
-                "Each menu item needs a name, quantity and selling rate greater than zero."
+                "Each menu item needs a name, a valid whole-number quantity and a selling rate greater than zero."
             );
             return;
         }
@@ -326,18 +499,13 @@ function QuotationsPage() {
                 createdAt: new Date().toISOString(),
             };
 
-            setQuotations((previous) => [
-                newQuotation,
-                ...previous,
-            ]);
-
+            setQuotations((previous) => [newQuotation, ...previous]);
             setSelectedId(newQuotation.id);
         }
 
         resetForm();
     };
 
-    // Edit quotation.
     const handleEdit = (quotation: Quotation) => {
         setFormData({
             customerName: quotation.customerName,
@@ -358,7 +526,6 @@ function QuotationsPage() {
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // Delete quotation.
     const handleDelete = (quotation: Quotation) => {
         const confirmed = window.confirm(
             `Delete quotation ${quotation.quotationNumber} for ${quotation.customerName}?`
@@ -379,11 +546,7 @@ function QuotationsPage() {
         }
     };
 
-    // Update status.
-    const updateStatus = (
-        id: number,
-        status: QuotationStatus
-    ) => {
+    const updateStatus = (id: number, status: QuotationStatus) => {
         setQuotations((previous) =>
             previous.map((q) =>
                 q.id === id ? { ...q, status } : q
@@ -391,7 +554,6 @@ function QuotationsPage() {
         );
     };
 
-    // Print selected quotation.
     const handlePrint = () => {
         window.print();
     };
@@ -399,13 +561,10 @@ function QuotationsPage() {
     return (
         <div className="quotations-page">
 
-            {/* Page Heading */}
             <div className="quotations-heading no-print">
                 <div>
                     <h2>Quotations Management</h2>
-                    <p>
-                        Create and manage customer catering quotations.
-                    </p>
+                    <p>Create and manage customer catering quotations.</p>
                 </div>
 
                 <button
@@ -417,9 +576,7 @@ function QuotationsPage() {
                 </button>
             </div>
 
-            {/* Statistics */}
             <div className="quotation-summary no-print">
-
                 <div className="quotation-stat-card">
                     <span>Total Quotations</span>
                     <h3>{totalQuotations}</h3>
@@ -439,13 +596,11 @@ function QuotationsPage() {
                     <span>Accepted Business Value</span>
                     <h3>{formatCurrency(totalBusinessValue)}</h3>
                 </div>
-
             </div>
 
-            {/* Create / Edit Form */}
+            {/* CREATE / EDIT FORM */}
             {showForm && (
                 <div className="quotation-form-section no-print">
-
                     <div className="section-title-row">
                         <h3>
                             {editingId !== null
@@ -464,11 +619,9 @@ function QuotationsPage() {
                     </div>
 
                     <form onSubmit={handleSubmit}>
-
                         <h4>Customer Information</h4>
 
                         <div className="quotation-form-grid">
-
                             <div className="quotation-form-group">
                                 <label>Customer Name *</label>
                                 <input
@@ -554,16 +707,15 @@ function QuotationsPage() {
                                     required
                                 />
                             </div>
-
                         </div>
 
-                        {/* Menu Items */}
+                        {/* MENU AND RECIPE SELECTION */}
                         <div className="menu-items-heading">
                             <div>
-                                <h4>Menu & Pricing Details</h4>
+                                <h4>Menu, Recipe & Pricing Details</h4>
                                 <p>
-                                    Enter the selling quantity and rate for
-                                    each menu item.
+                                    Select a saved recipe to calculate food
+                                    requirements and estimated ingredient costs.
                                 </p>
                             </div>
 
@@ -577,93 +729,223 @@ function QuotationsPage() {
                             </button>
                         </div>
 
+                        {recipes.length === 0 && (
+                            <p style={{
+                                color: "#b45309",
+                                background: "#fffbeb",
+                                padding: "10px 12px",
+                                borderRadius: "8px",
+                                marginBottom: "14px",
+                            }}>
+                                No recipes found. Add recipes in Recipe Costing
+                                to enable automatic food-cost calculations.
+                            </p>
+                        )}
+
                         <div className="menu-item-list">
+                            {formData.items.map((item, index) => {
+                                const cost = getMenuItemCost(item);
 
-                            {formData.items.map((item, index) => (
-                                <div className="menu-item-row" key={item.id}>
+                                return (
+                                    <div className="menu-item-row" key={item.id}>
+                                        <div className="menu-item-name">
+                                            <label>Menu Item {index + 1}</label>
+                                            <input
+                                                type="text"
+                                                placeholder="e.g. Paneer Tikka"
+                                                value={item.name}
+                                                onChange={(e) =>
+                                                    updateMenuItem(
+                                                        item.id,
+                                                        "name",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </div>
 
-                                    <div className="menu-item-name">
-                                        <label>Menu Item {index + 1}</label>
-                                        <input
-                                            type="text"
-                                            placeholder="e.g. Paneer Tikka"
-                                            value={item.name}
-                                            onChange={(e) =>
-                                                updateMenuItem(
-                                                    item.id,
-                                                    "name",
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
+                                        <div style={{ minWidth: "150px" }}>
+                                            <label>Link Recipe</label>
+                                            <select
+                                                value={item.recipeId ?? ""}
+                                                onChange={(e) =>
+                                                    selectRecipe(item.id, e.target.value)
+                                                }
+                                            >
+                                                <option value="">Manual / No Recipe</option>
+                                                {recipes.map((recipe) => (
+                                                    <option
+                                                        key={recipe.id}
+                                                        value={recipe.id}
+                                                    >
+                                                        {recipe.name}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label>Quantity / Plates</label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                step="1"
+                                                value={item.quantity}
+                                                onChange={(e) =>
+                                                    updateMenuItem(
+                                                        item.id,
+                                                        "quantity",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label>Selling Rate (₹)</label>
+                                            <input
+                                                type="number"
+                                                min="0.01"
+                                                step="0.01"
+                                                value={item.rate || ""}
+                                                placeholder="Enter rate"
+                                                onChange={(e) =>
+                                                    updateMenuItem(
+                                                        item.id,
+                                                        "rate",
+                                                        e.target.value
+                                                    )
+                                                }
+                                            />
+                                        </div>
+
+                                        <div className="menu-item-total">
+                                            <label>Selling Amount</label>
+                                            <strong>
+                                                {formatCurrency(item.quantity * item.rate)}
+                                            </strong>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            className="remove-menu-item-btn"
+                                            onClick={() => removeMenuItem(item.id)}
+                                            disabled={formData.items.length === 1}
+                                            title="Remove menu item"
+                                        >
+                                            <Trash2 size={17} />
+                                        </button>
+
+                                        {item.recipeId && (
+                                            <div style={{
+                                                gridColumn: "1 / -1",
+                                                fontSize: "13px",
+                                                color: cost?.complete ? "#15803d" : "#b45309",
+                                                padding: "4px 0",
+                                            }}>
+                                                {cost
+                                                    ? cost.complete
+                                                        ? `Estimated food cost: ${formatCurrency(cost.totalCost)} | Buffer: ${cost.bufferPercentage}%`
+                                                        : "Some ingredient prices are missing. Check Ingredient Pricing."
+                                                    : "Recipe details could not be loaded."}
+                                            </div>
+                                        )}
                                     </div>
-
-                                    <div>
-                                        <label>Quantity / Plates</label>
-                                        <input
-                                            type="number"
-                                            min="1"
-                                            step="1"
-                                            value={item.quantity}
-                                            onChange={(e) =>
-                                                updateMenuItem(
-                                                    item.id,
-                                                    "quantity",
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-                                    </div>
-
-                                    <div>
-                                        <label>Rate (₹)</label>
-                                        <input
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            value={item.rate || ""}
-                                            placeholder="Enter rate"
-                                            onChange={(e) =>
-                                                updateMenuItem(
-                                                    item.id,
-                                                    "rate",
-                                                    e.target.value
-                                                )
-                                            }
-                                        />
-                                    </div>
-
-                                    <div className="menu-item-total">
-                                        <label>Amount</label>
-                                        <strong>
-                                            {formatCurrency(
-                                                item.quantity * item.rate
-                                            )}
-                                        </strong>
-                                    </div>
-
-                                    <button
-                                        type="button"
-                                        className="remove-menu-item-btn"
-                                        onClick={() => removeMenuItem(item.id)}
-                                        disabled={formData.items.length === 1}
-                                        title="Remove menu item"
-                                    >
-                                        <Trash2 size={17} />
-                                    </button>
-
-                                </div>
-                            ))}
-
+                                );
+                            })}
                         </div>
 
-                        {/* Total */}
                         <div className="quotation-form-total">
-                            <span>Quotation Total</span>
+                            <span>Quotation Selling Total</span>
                             <strong>
                                 {formatCurrency(getTotal(formData.items))}
                             </strong>
                         </div>
+
+                        {/* COSTING SUMMARY */}
+                        {(() => {
+                            const costing = getQuotationCost(formData.items);
+                            const sellingTotal = getTotal(formData.items);
+                            const profit = sellingTotal - costing.totalCost;
+                            const foodCostPercentage = sellingTotal > 0
+                                ? (costing.totalCost / sellingTotal) * 100
+                                : 0;
+
+                            return (
+                                <div style={{
+                                    marginTop: "18px",
+                                    padding: "16px",
+                                    border: "1px solid var(--border-color, #e5e7eb)",
+                                    borderRadius: "10px",
+                                }}>
+                                    <h4 style={{ marginTop: 0 }}>
+                                        Estimated Cost & Profit Analysis
+                                    </h4>
+
+                                    <div style={{
+                                        display: "grid",
+                                        gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))",
+                                        gap: "14px",
+                                    }}>
+                                        <div>
+                                            <small>Estimated Food Cost</small>
+                                            <h3>{formatCurrency(costing.totalCost)}</h3>
+                                        </div>
+                                        <div>
+                                            <small>Selling Value</small>
+                                            <h3>{formatCurrency(sellingTotal)}</h3>
+                                        </div>
+                                        <div>
+                                            <small>Estimated Contribution</small>
+                                            <h3 style={{
+                                                color: profit >= 0 ? "#15803d" : "#dc2626",
+                                            }}>
+                                                {formatCurrency(profit)}
+                                            </h3>
+                                        </div>
+                                        <div>
+                                            <small>Food Cost Percentage</small>
+                                            <h3>{foodCostPercentage.toFixed(1)}%</h3>
+                                        </div>
+                                    </div>
+
+                                    {costing.unlinkedCount > 0 && (
+                                        <p style={{
+                                            color: "#b45309",
+                                            fontSize: "13px",
+                                            marginBottom: 0,
+                                        }}>
+                                            {costing.unlinkedCount} menu item(s) are
+                                            not linked to recipes. The food-cost
+                                            estimate is incomplete.
+                                        </p>
+                                    )}
+
+                                    {costing.linkedCount > 0 && !costing.complete && (
+                                        <p style={{
+                                            color: "#b45309",
+                                            fontSize: "13px",
+                                            marginBottom: 0,
+                                        }}>
+                                            Some linked recipes have ingredients
+                                            without a matching price. Update
+                                            Ingredient Pricing for a complete estimate.
+                                        </p>
+                                    )}
+
+                                    {costing.linkedCount === 0 && (
+                                        <p style={{
+                                            color: "#6b7280",
+                                            fontSize: "13px",
+                                            marginBottom: 0,
+                                        }}>
+                                            Link recipes to menu items to calculate
+                                            estimated food cost and contribution.
+                                        </p>
+                                    )}
+                                </div>
+                            );
+                        })()}
 
                         <div className="quotation-form-group notes-group">
                             <label>Additional Notes</label>
@@ -684,7 +966,6 @@ function QuotationsPage() {
                         )}
 
                         <div className="quotation-form-actions">
-
                             <button
                                 type="button"
                                 className="quotation-cancel-btn"
@@ -701,17 +982,14 @@ function QuotationsPage() {
                                     ? "Update Quotation"
                                     : "Save Quotation"}
                             </button>
-
                         </div>
-
                     </form>
                 </div>
             )}
 
-            {/* Selected Quotation Details */}
+            {/* SELECTED QUOTATION DETAILS */}
             {selectedQuotation && !showForm && (
                 <div className="quotation-detail-section">
-
                     <div className="detail-actions no-print">
                         <button
                             className="back-to-list-btn"
@@ -741,7 +1019,6 @@ function QuotationsPage() {
                     </div>
 
                     <div className="quotation-print-area">
-
                         <div className="print-header">
                             <h1>MEALMATE</h1>
                             <p>Catering & Event Management</p>
@@ -757,9 +1034,7 @@ function QuotationsPage() {
                             <div>
                                 <span>Created On</span>
                                 <strong>
-                                    {formatDate(
-                                        selectedQuotation.createdAt.slice(0, 10)
-                                    )}
+                                    {formatDate(selectedQuotation.createdAt.slice(0, 10))}
                                 </strong>
                             </div>
 
@@ -772,30 +1047,12 @@ function QuotationsPage() {
                         <h3>Customer & Event Details</h3>
 
                         <div className="print-customer-grid">
-                            <p>
-                                <span>Customer:</span>
-                                {selectedQuotation.customerName}
-                            </p>
-                            <p>
-                                <span>Contact:</span>
-                                {selectedQuotation.phone}
-                            </p>
-                            <p>
-                                <span>Event:</span>
-                                {selectedQuotation.eventType}
-                            </p>
-                            <p>
-                                <span>Date:</span>
-                                {formatDate(selectedQuotation.eventDate)}
-                            </p>
-                            <p>
-                                <span>Venue:</span>
-                                {selectedQuotation.venue}
-                            </p>
-                            <p>
-                                <span>Guests:</span>
-                                {selectedQuotation.guests}
-                            </p>
+                            <p><span>Customer:</span>{selectedQuotation.customerName}</p>
+                            <p><span>Contact:</span>{selectedQuotation.phone}</p>
+                            <p><span>Event:</span>{selectedQuotation.eventType}</p>
+                            <p><span>Date:</span>{formatDate(selectedQuotation.eventDate)}</p>
+                            <p><span>Venue:</span>{selectedQuotation.venue}</p>
+                            <p><span>Guests:</span>{selectedQuotation.guests}</p>
                         </div>
 
                         <h3>Menu & Price Details</h3>
@@ -818,9 +1075,7 @@ function QuotationsPage() {
                                             <td>{item.quantity}</td>
                                             <td>{formatCurrency(item.rate)}</td>
                                             <td>
-                                                {formatCurrency(
-                                                    item.quantity * item.rate
-                                                )}
+                                                {formatCurrency(item.quantity * item.rate)}
                                             </td>
                                         </tr>
                                     ))}
@@ -831,11 +1086,131 @@ function QuotationsPage() {
                         <div className="print-grand-total">
                             <span>Grand Total</span>
                             <strong>
-                                {formatCurrency(
-                                    getTotal(selectedQuotation.items)
-                                )}
+                                {formatCurrency(getTotal(selectedQuotation.items))}
                             </strong>
                         </div>
+
+                        {/* INGREDIENT-WISE COST BREAKDOWN */}
+                        {(() => {
+                            const costing = getQuotationCost(selectedQuotation.items);
+                            const sellingTotal = getTotal(selectedQuotation.items);
+                            const profit = sellingTotal - costing.totalCost;
+                            const percentage = sellingTotal > 0
+                                ? (costing.totalCost / sellingTotal) * 100
+                                : 0;
+
+                            if (costing.linkedCount === 0) return null;
+
+                            return (
+                                <div style={{ marginTop: "28px" }}>
+                                    <h3>Estimated Food Cost Breakdown</h3>
+
+                                    {costing.details.map(({ item, cost }) => (
+                                        <div key={item.id} style={{
+                                            marginBottom: "18px",
+                                            breakInside: "avoid",
+                                        }}>
+                                            <h4>
+                                                {item.name} — {item.quantity} plates
+                                            </h4>
+
+                                            {cost ? (
+                                                <>
+                                                    <p style={{ fontSize: "13px" }}>
+                                                        Recipe: {cost.recipeName} |
+                                                        Buffer: {cost.bufferPercentage}%
+                                                    </p>
+
+                                                    <div className="table-wrapper">
+                                                        <table className="quotation-detail-table">
+                                                            <thead>
+                                                                <tr>
+                                                                    <th>Ingredient</th>
+                                                                    <th>Required Quantity</th>
+                                                                    <th>Unit Price</th>
+                                                                    <th>Cost</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {cost.ingredients.map((ingredient, index) => (
+                                                                    <tr key={`${ingredient.ingredientName}-${index}`}>
+                                                                        <td>{ingredient.ingredientName}</td>
+                                                                        <td>
+                                                                            {ingredient.requiredQuantity.toFixed(3)}
+                                                                            {" "}{ingredient.unit}
+                                                                        </td>
+                                                                        <td>
+                                                                            {ingredient.priceAvailable
+                                                                                ? formatCurrency(ingredient.unitPrice)
+                                                                                : "Price unavailable"}
+                                                                        </td>
+                                                                        <td>
+                                                                            {ingredient.priceAvailable
+                                                                                ? formatCurrency(ingredient.totalCost)
+                                                                                : "—"}
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+
+                                                    <p>
+                                                        <strong>
+                                                            Estimated recipe cost: {formatCurrency(cost.totalCost)}
+                                                        </strong>
+                                                    </p>
+
+                                                    {!cost.complete && (
+                                                        <p style={{ color: "#b45309" }}>
+                                                            Some ingredient prices are missing.
+                                                            This recipe cost is incomplete.
+                                                        </p>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                <p>Recipe costing information unavailable.</p>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    <div style={{
+                                        borderTop: "1px solid #ddd",
+                                        paddingTop: "14px",
+                                        marginTop: "16px",
+                                    }}>
+                                        <p>
+                                            <strong>
+                                                Estimated Food Cost: {formatCurrency(costing.totalCost)}
+                                            </strong>
+                                        </p>
+                                        <p>
+                                            <strong>
+                                                Selling Value: {formatCurrency(sellingTotal)}
+                                            </strong>
+                                        </p>
+                                        <p>
+                                            <strong>
+                                                Estimated Contribution: {formatCurrency(profit)}
+                                            </strong>
+                                        </p>
+                                        <p>
+                                            <strong>
+                                                Food Cost Percentage: {percentage.toFixed(1)}%
+                                            </strong>
+                                        </p>
+
+                                        {(costing.unlinkedCount > 0 || !costing.complete) && (
+                                            <p style={{ color: "#b45309", fontSize: "13px" }}>
+                                                Note: This estimate is incomplete because
+                                                some menu items are not linked to recipes
+                                                or some ingredient prices are unavailable.
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {selectedQuotation.notes && (
                             <div className="print-notes">
@@ -848,41 +1223,32 @@ function QuotationsPage() {
                             <p>Thank you for considering MealMate!</p>
                             <p>We look forward to serving you.</p>
                         </div>
-
                     </div>
                 </div>
             )}
 
-            {/* Quotations List */}
+            {/* QUOTATIONS LIST */}
             {!selectedQuotation && !showForm && (
                 <div className="quotation-list-section no-print">
-
                     <div className="quotation-list-heading">
                         <h3>All Quotations</h3>
-                        <span>
-                            {filteredQuotations.length} Records
-                        </span>
+                        <span>{filteredQuotations.length} Records</span>
                     </div>
 
                     <div className="quotation-filters">
-
                         <div className="quotation-search">
                             <Search size={18} />
                             <input
                                 type="text"
                                 placeholder="Search customer or quotation number..."
                                 value={searchTerm}
-                                onChange={(e) =>
-                                    setSearchTerm(e.target.value)
-                                }
+                                onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
 
                         <select
                             value={statusFilter}
-                            onChange={(e) =>
-                                setStatusFilter(e.target.value)
-                            }
+                            onChange={(e) => setStatusFilter(e.target.value)}
                         >
                             <option value="All">All Statuses</option>
                             {statuses.map((status) => (
@@ -891,7 +1257,6 @@ function QuotationsPage() {
                                 </option>
                             ))}
                         </select>
-
                     </div>
 
                     {filteredQuotations.length === 0 ? (
@@ -914,10 +1279,8 @@ function QuotationsPage() {
                             )}
                         </div>
                     ) : (
-
                         <div className="table-wrapper">
                             <table className="quotations-table">
-
                                 <thead>
                                     <tr>
                                         <th>Quotation ID</th>
@@ -933,28 +1296,20 @@ function QuotationsPage() {
                                 <tbody>
                                     {filteredQuotations.map((quotation) => (
                                         <tr key={quotation.id}>
-
                                             <td className="quotation-id">
                                                 {quotation.quotationNumber}
                                             </td>
 
                                             <td>
-                                                <strong>
-                                                    {quotation.customerName}
-                                                </strong>
+                                                <strong>{quotation.customerName}</strong>
                                                 <small>{quotation.phone}</small>
                                             </td>
 
-                                            <td>
-                                                {formatDate(quotation.eventDate)}
-                                            </td>
-
+                                            <td>{formatDate(quotation.eventDate)}</td>
                                             <td>{quotation.guests}</td>
 
                                             <td className="quotation-amount">
-                                                {formatCurrency(
-                                                    getTotal(quotation.items)
-                                                )}
+                                                {formatCurrency(getTotal(quotation.items))}
                                             </td>
 
                                             <td>
@@ -969,10 +1324,7 @@ function QuotationsPage() {
                                                     }
                                                 >
                                                     {statuses.map((status) => (
-                                                        <option
-                                                            key={status}
-                                                            value={status}
-                                                        >
+                                                        <option key={status} value={status}>
                                                             {status}
                                                         </option>
                                                     ))}
@@ -981,21 +1333,16 @@ function QuotationsPage() {
 
                                             <td>
                                                 <div className="quotation-row-actions">
-
                                                     <button
                                                         title="View"
-                                                        onClick={() =>
-                                                            setSelectedId(quotation.id)
-                                                        }
+                                                        onClick={() => setSelectedId(quotation.id)}
                                                     >
                                                         <Eye size={16} />
                                                     </button>
 
                                                     <button
                                                         title="Edit"
-                                                        onClick={() =>
-                                                            handleEdit(quotation)
-                                                        }
+                                                        onClick={() => handleEdit(quotation)}
                                                     >
                                                         <Pencil size={16} />
                                                     </button>
@@ -1003,27 +1350,20 @@ function QuotationsPage() {
                                                     <button
                                                         title="Delete"
                                                         className="row-delete-btn"
-                                                        onClick={() =>
-                                                            handleDelete(quotation)
-                                                        }
+                                                        onClick={() => handleDelete(quotation)}
                                                     >
                                                         <Trash2 size={16} />
                                                     </button>
-
                                                 </div>
                                             </td>
-
                                         </tr>
                                     ))}
                                 </tbody>
-
                             </table>
                         </div>
                     )}
-
                 </div>
             )}
-
         </div>
     );
 }

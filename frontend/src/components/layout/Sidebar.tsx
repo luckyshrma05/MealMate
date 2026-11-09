@@ -7,6 +7,7 @@ import {
     Utensils,
     BarChart3,
     ChefHat,
+    Settings,
 } from "lucide-react";
 
 const navigationItems = [
@@ -34,6 +35,16 @@ const navigationItems = [
         name: "Reports",
         path: "/admin/reports",
         icon: BarChart3,
+    },
+    {
+        name: "Recipes",
+        path: "/admin/recipes",
+        icon: ChefHat,
+    },
+    {
+        name: "Serving Standards",
+        path: "/admin/configuration",
+        icon: Settings
     },
 ];
 

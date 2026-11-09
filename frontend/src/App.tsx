@@ -4,10 +4,12 @@ import { Routes, Route, Navigate } from "react-router-dom";
 import LoginPage from "./pages/auth/LoginPage";
 import AdminLayout from "./components/layout/AdminLayout";
 import AdminDashboardPage from "./pages/admin/AdminDashboardPage";
-import SectionPlaceholder from "./pages/admin/SectionPlaceholder";
 import PricingPage from "./pages/pricing/PricingPage";
 import QuotationsPage from "./pages/quotations/QuotationsPage";
 import ConsumptionPage from "./pages/consumption/ConsumptionPage";
+import ReportsPage from "./pages/reports/ReportsPage";
+import RecipesPage from "./pages/recipes/RecipesPage";
+import ConfigurationPage from "./pages/configuration/ConfigurationPage";
 
 function App() {
   return (
@@ -40,7 +42,14 @@ function App() {
 
         <Route
           path="reports"
-          element={<SectionPlaceholder title="Business Reports" />}
+          element={<ReportsPage />}
+        />
+        <Route
+          path="recipes"
+          element={<RecipesPage />} />
+        <Route
+          path="configuration"
+          element={<ConfigurationPage />}
         />
 
       </Route>
