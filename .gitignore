@@ -10,3 +10,4 @@ node_modules/
 # Local backups
 /backups/
 .neon-setup-backup-*
+/.neon
