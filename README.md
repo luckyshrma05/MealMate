@@ -25,6 +25,4 @@ Team 06 - BITS Pilani
 
 ## Project Status
 
-Under Development
-
-Added google OAuth config routers
+Complete

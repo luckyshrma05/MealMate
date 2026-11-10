@@ -6,6 +6,7 @@ import Login from "./pages/Login";
 import Dashboard from "./pages/Dashboard";
 import CreateEvent from "./pages/createEvent";
 import SelectDishes from "./pages/selectDishes";
+import EditEvent from "./pages/editEvent";
 
 
 import AdminLayout from "./components/layout/AdminLayout";
@@ -26,6 +27,7 @@ function App() {
       
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/events/new" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
+      <Route path="/events/:eventId/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
       <Route path="/events/:eventId/dishes" element={<ProtectedRoute><SelectDishes /></ProtectedRoute>} />
 
       

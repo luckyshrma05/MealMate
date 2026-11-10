@@ -1,85 +1,85 @@
-
 import { useEffect, useState, type FormEvent } from "react";
+import { 
+  fetchIngredients, 
+  createIngredient, 
+  updateIngredient, 
+  deleteIngredient 
+} from "../../services/catalogService";
+import { 
+  getPrices, 
+  createPrice, 
+  updatePrice 
+} from "../../services/pricingService";
 import "./PricingPage.css";
 
-type Ingredient = {
+type IngredientData = {
     id: number;
     name: string;
-    category: string;
     unit: string;
-    supplier: string;
     price: number;
+    priceId?: number;
 };
 
 type FormData = {
     name: string;
-    category: string;
     unit: string;
-    supplier: string;
     price: string;
 };
 
-const STORAGE_KEY = "mealmate_ingredients";
-const PRICE_UPDATES_KEY = "mealmate_price_updates";
-
 const emptyForm: FormData = {
     name: "",
-    category: "",
     unit: "",
-    supplier: "",
     price: "",
 };
 
 function PricingPage() {
-    // Load saved ingredients from browser storage.
-    const [ingredients, setIngredients] = useState<Ingredient[]>(() => {
-        try {
-            const saved = localStorage.getItem(STORAGE_KEY);
-            const parsed = saved ? JSON.parse(saved) : [];
-
-            return Array.isArray(parsed) ? parsed : [];
-        } catch {
-            return [];
-        }
-    });
-
-    // Load the number of actual price changes.
-    const [priceUpdates, setPriceUpdates] = useState<number>(() => {
-        try {
-            const saved = localStorage.getItem(PRICE_UPDATES_KEY);
-            const parsed = saved ? Number(saved) : 0;
-
-            return Number.isInteger(parsed) && parsed >= 0 ? parsed : 0;
-        } catch {
-            return 0;
-        }
-    });
-
+    const [ingredients, setIngredients] = useState<IngredientData[]>([]);
     const [showForm, setShowForm] = useState(false);
     const [editingId, setEditingId] = useState<number | null>(null);
     const [formData, setFormData] = useState<FormData>(emptyForm);
     const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(true);
 
-    // Persist ingredients whenever they change.
+    const loadData = async () => {
+        setIsLoading(true);
+        try {
+            // Fetch both lists concurrently from your live backend
+            const [ingredientsRes, pricesRes] = await Promise.all([
+                fetchIngredients(),
+                getPrices()
+            ]);
+
+            // Merge the two backend tables into a single view for the table
+            const merged = ingredientsRes.map((ing: any) => {
+                const priceRecord = pricesRes.find((p: any) => p.ingredientId === ing.id);
+                return {
+                    id: ing.id,
+                    name: ing.name,
+                    unit: ing.unit,
+                    price: priceRecord ? priceRecord.pricePerUnit : 0,
+                    priceId: priceRecord ? priceRecord.id : undefined
+                };
+            });
+
+            setIngredients(merged);
+        } catch (err) {
+            console.error("Failed to load pricing data", err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     useEffect(() => {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(ingredients));
-    }, [ingredients]);
+        loadData();
+    }, []);
 
-    // Persist price update count.
-    useEffect(() => {
-        localStorage.setItem(PRICE_UPDATES_KEY, String(priceUpdates));
-    }, [priceUpdates]);
-
-    // Summary calculations.
+    // Summary calculations
     const totalIngredients = ingredients.length;
+    const pricedIngredients = ingredients.filter(i => i.price > 0).length;
+    const averagePrice = pricedIngredients > 0
+        ? ingredients.reduce((total, item) => total + item.price, 0) / pricedIngredients
+        : 0;
 
-    const averagePrice =
-        totalIngredients > 0
-            ? ingredients.reduce((total, item) => total + item.price, 0) /
-            totalIngredients
-            : 0;
-
-    // Reset form and close it.
     const resetForm = () => {
         setFormData(emptyForm);
         setEditingId(null);
@@ -87,7 +87,6 @@ function PricingPage() {
         setError("");
     };
 
-    // Open a fresh Add Ingredient form.
     const handleAddNew = () => {
         setFormData(emptyForm);
         setEditingId(null);
@@ -95,26 +94,19 @@ function PricingPage() {
         setShowForm(true);
     };
 
-    // Update form fields.
     const handleInputChange = (field: keyof FormData, value: string) => {
-        setFormData((previous) => ({
-            ...previous,
-            [field]: value,
-        }));
-
+        setFormData((previous) => ({ ...previous, [field]: value }));
         if (error) setError("");
     };
 
-    // Add or update ingredient.
-    const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
+    const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
         e.preventDefault();
         setError("");
 
         const name = formData.name.trim();
-        const supplier = formData.supplier.trim();
         const price = Number(formData.price);
 
-        if (!name || !supplier || !formData.category || !formData.unit) {
+        if (!name || !formData.unit) {
             setError("Please complete all required fields.");
             return;
         }
@@ -124,190 +116,107 @@ function PricingPage() {
             return;
         }
 
-        // Prevent duplicate ingredient names.
-        const duplicate = ingredients.some(
-            (item) =>
-                item.name.toLowerCase() === name.toLowerCase() &&
-                item.id !== editingId
-        );
-
-        if (duplicate) {
-            setError("This ingredient already exists in your price list.");
-            return;
-        }
-
-        if (editingId !== null) {
-            const existingIngredient = ingredients.find(
-                (item) => item.id === editingId
-            );
-
-            if (!existingIngredient) {
-                setError("Ingredient not found. Please try again.");
-                return;
+        try {
+            if (editingId !== null) {
+                // 1. Update Ingredient table
+                await updateIngredient(editingId, { name, unit: formData.unit });
+                
+                // 2. Update or Create Price table entry
+                const existing = ingredients.find(i => i.id === editingId);
+                if (existing?.priceId) {
+                    await updatePrice(editingId, price);
+                } else {
+                    await createPrice({ ingredientId: editingId, pricePerUnit: price });
+                }
+            } else {
+                // 1. Create in Ingredient table
+                const newIng = await createIngredient({ name, unit: formData.unit });
+                // 2. Create in Price table
+                await createPrice({ ingredientId: newIng.id, pricePerUnit: price });
             }
 
-            const updatedIngredient: Ingredient = {
-                ...existingIngredient,
-                name,
-                category: formData.category,
-                unit: formData.unit,
-                supplier,
-                price,
-            };
-
-            setIngredients((previous) =>
-                previous.map((item) =>
-                    item.id === editingId ? updatedIngredient : item
-                )
-            );
-
-            // Count only actual price changes.
-            if (existingIngredient.price !== price) {
-                setPriceUpdates((previous) => previous + 1);
-            }
-        } else {
-            const newIngredient: Ingredient = {
-                id: Date.now(),
-                name,
-                category: formData.category,
-                unit: formData.unit,
-                supplier,
-                price,
-            };
-
-            setIngredients((previous) => [...previous, newIngredient]);
+            await loadData();
+            resetForm();
+        } catch (err: any) {
+            setError(err.response?.data?.message || "Failed to save ingredient");
         }
-
-        resetForm();
     };
 
-    // Load an existing ingredient into the form.
-    const handleEdit = (ingredient: Ingredient) => {
+    const handleEdit = (ingredient: IngredientData) => {
         setFormData({
             name: ingredient.name,
-            category: ingredient.category,
             unit: ingredient.unit,
-            supplier: ingredient.supplier,
             price: String(ingredient.price),
         });
-
         setEditingId(ingredient.id);
         setShowForm(true);
         setError("");
-
-        // Bring the form into view.
         window.scrollTo({ top: 0, behavior: "smooth" });
     };
 
-    // Delete ingredient after confirmation.
-    const handleDelete = (ingredient: Ingredient) => {
-        const confirmed = window.confirm(
-            `Are you sure you want to delete "${ingredient.name}"?`
-        );
-
+    const handleDelete = async (ingredient: IngredientData) => {
+        const confirmed = window.confirm(`Are you sure you want to delete "${ingredient.name}"?`);
         if (!confirmed) return;
 
-        setIngredients((previous) =>
-            previous.filter((item) => item.id !== ingredient.id)
-        );
-
-        // Close the form if the deleted ingredient was being edited.
-        if (editingId === ingredient.id) {
-            resetForm();
+        try {
+            await deleteIngredient(ingredient.id);
+            await loadData();
+            if (editingId === ingredient.id) resetForm();
+        } catch (err: any) {
+            alert(err.response?.data?.message || "Failed to delete ingredient");
         }
     };
 
+    if (isLoading) return <div style={{ padding: "30px" }}>Loading pricing data...</div>;
+
     return (
         <div className="pricing-page">
-
-            {/* Page Heading */}
             <div className="pricing-heading">
                 <div>
                     <h2>Pricing Management</h2>
-                    <p>Manage ingredient prices and supplier information.</p>
+                    <p>Manage ingredient prices connected directly to your database.</p>
                 </div>
-
-                <button
-                    type="button"
-                    className="add-ingredient-btn"
-                    onClick={handleAddNew}
-                >
+                <button type="button" className="add-ingredient-btn" onClick={handleAddNew}>
                     + Add Ingredient
                 </button>
             </div>
 
-            {/* Summary Cards */}
             <div className="pricing-summary">
-
                 <div className="pricing-card">
                     <h3>Total Ingredients</h3>
                     <p>{totalIngredients}</p>
                 </div>
-
+                <div className="pricing-card">
+                    <h3>Priced Ingredients</h3>
+                    <p>{pricedIngredients}</p>
+                </div>
                 <div className="pricing-card">
                     <h3>Average Ingredient Price</h3>
                     <p>₹{averagePrice.toFixed(2)}</p>
                 </div>
-
-                <div className="pricing-card">
-                    <h3>Price Updates</h3>
-                    <p>{priceUpdates}</p>
-                </div>
-
             </div>
 
-            {/* Add / Edit Ingredient Form */}
             {showForm && (
                 <div className="ingredient-form-section">
-
-                    <h3>
-                        {editingId !== null
-                            ? "Edit Ingredient"
-                            : "Add New Ingredient"}
-                    </h3>
-
+                    <h3>{editingId !== null ? "Edit Ingredient" : "Add New Ingredient"}</h3>
                     <form onSubmit={handleSubmit}>
-
                         <div className="form-grid">
-
                             <div className="form-group">
                                 <label>Ingredient Name</label>
                                 <input
                                     type="text"
                                     placeholder="e.g. Rice"
                                     value={formData.name}
-                                    onChange={(e) =>
-                                        handleInputChange("name", e.target.value)
-                                    }
+                                    onChange={(e) => handleInputChange("name", e.target.value)}
                                     required
                                 />
-                            </div>
-
-                            <div className="form-group">
-                                <label>Category</label>
-                                <select
-                                    value={formData.category}
-                                    onChange={(e) =>
-                                        handleInputChange("category", e.target.value)
-                                    }
-                                    required
-                                >
-                                    <option value="">Select Category</option>
-                                    <option value="Grains">Grains</option>
-                                    <option value="Vegetables">Vegetables</option>
-                                    <option value="Dairy">Dairy</option>
-                                    <option value="Meat">Meat</option>
-                                    <option value="Others">Others</option>
-                                </select>
                             </div>
 
                             <div className="form-group">
                                 <label>Unit</label>
                                 <select
                                     value={formData.unit}
-                                    onChange={(e) =>
-                                        handleInputChange("unit", e.target.value)
-                                    }
+                                    onChange={(e) => handleInputChange("unit", e.target.value)}
                                     required
                                 >
                                     <option value="">Select Unit</option>
@@ -315,20 +224,9 @@ function PricingPage() {
                                     <option value="Litre">Litre</option>
                                     <option value="Piece">Piece</option>
                                     <option value="Dozen">Dozen</option>
+                                    <option value="g">Gram (g)</option>
+                                    <option value="ml">Milliliter (ml)</option>
                                 </select>
-                            </div>
-
-                            <div className="form-group">
-                                <label>Supplier Name</label>
-                                <input
-                                    type="text"
-                                    placeholder="Enter supplier name"
-                                    value={formData.supplier}
-                                    onChange={(e) =>
-                                        handleInputChange("supplier", e.target.value)
-                                    }
-                                    required
-                                />
                             </div>
 
                             <div className="form-group">
@@ -339,83 +237,50 @@ function PricingPage() {
                                     min="0.01"
                                     step="0.01"
                                     value={formData.price}
-                                    onChange={(e) =>
-                                        handleInputChange("price", e.target.value)
-                                    }
+                                    onChange={(e) => handleInputChange("price", e.target.value)}
                                     required
                                 />
                             </div>
-
                         </div>
 
-                        {error && (
-                            <p className="form-error" role="alert">
-                                {error}
-                            </p>
-                        )}
+                        {error && <p className="form-error" role="alert">{error}</p>}
 
                         <div className="form-actions">
-
-                            <button
-                                type="button"
-                                className="cancel-btn"
-                                onClick={resetForm}
-                            >
+                            <button type="button" className="cancel-btn" onClick={resetForm}>
                                 Cancel
                             </button>
-
                             <button type="submit" className="save-btn">
-                                {editingId !== null
-                                    ? "Update Ingredient"
-                                    : "Save Ingredient"}
+                                {editingId !== null ? "Update Ingredient" : "Save Ingredient"}
                             </button>
-
                         </div>
-
                     </form>
                 </div>
             )}
 
-            {/* Ingredient Price List */}
             <div className="pricing-table-section">
-
                 <h3>Ingredient Price List</h3>
-
                 {ingredients.length === 0 ? (
                     <div className="empty-state">
-                        <p className="empty-message">
-                            No ingredients added yet.
-                        </p>
-                        <p>
-                            Click Add Ingredient to start building your price list.
-                        </p>
+                        <p className="empty-message">No ingredients added yet.</p>
+                        <p>Click Add Ingredient to start building your live price list.</p>
                     </div>
                 ) : (
-
                     <div className="table-wrapper">
-
                         <table className="pricing-table">
-
                             <thead>
                                 <tr>
                                     <th>Ingredient</th>
-                                    <th>Category</th>
                                     <th>Unit</th>
-                                    <th>Supplier</th>
                                     <th>Price</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
-
                             <tbody>
                                 {ingredients.map((ingredient) => (
                                     <tr key={ingredient.id}>
                                         <td>{ingredient.name}</td>
-                                        <td>{ingredient.category}</td>
                                         <td>{ingredient.unit}</td>
-                                        <td>{ingredient.supplier}</td>
                                         <td>₹{ingredient.price.toFixed(2)}</td>
-
                                         <td>
                                             <div className="table-actions">
                                                 <button
@@ -425,7 +290,6 @@ function PricingPage() {
                                                 >
                                                     Edit
                                                 </button>
-
                                                 <button
                                                     type="button"
                                                     className="delete-btn"
@@ -438,14 +302,10 @@ function PricingPage() {
                                     </tr>
                                 ))}
                             </tbody>
-
                         </table>
-
                     </div>
                 )}
-
             </div>
-
         </div>
     );
 }

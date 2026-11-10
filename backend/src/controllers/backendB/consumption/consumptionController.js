@@ -93,3 +93,12 @@ export const getConsumptionByEvent = async (req, res) => {
     });
   }
 };
+
+export const getAllConsumptionRecords = async (req, res) => {
+  try {
+    const records = await consumptionService.getAllRecords();
+    return res.status(200).json({ success: true, data: records });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

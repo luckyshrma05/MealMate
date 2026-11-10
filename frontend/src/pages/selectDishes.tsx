@@ -10,11 +10,16 @@ export default function SelectDishes() {
   const [selections, setSelections] = useState<{ [dishId: number]: number }>({});
   const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
+useEffect(() => {
     const loadCatalog = async () => {
       try {
-        const dishes = await fetchDishes();
-        setCatalog(dishes);
+        const data = await fetchDishes();
+        
+        // ADD THIS CONSOLE LOG to see exactly what the backend returns
+        console.log("RAW BACKEND RESPONSE:", data); 
+
+        // Update state
+        setCatalog(data?.dishes || data || []); 
       } catch (error) {
         console.error("Failed to load catalog", error);
       } finally {

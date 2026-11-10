@@ -51,8 +51,11 @@ export default function Dashboard() {
               <p><strong>Guests:</strong> {event.guestCount} | <strong>Buffer:</strong> {event.bufferPercent}%</p>
               
               <div style={{ marginTop: '15px' }}>
-                <button style={{ padding: '8px 12px', cursor: 'pointer' }}>
-                  Edit Event
+                <button 
+                    onClick={() => navigate(`/events/${event.id}/edit`)}
+                    style={{ padding: '8px 12px', cursor: 'pointer' }}
+                >
+                      Edit Event
                 </button>
                 <button 
                   onClick={() => navigate(`/events/${event.id}/dishes`)}

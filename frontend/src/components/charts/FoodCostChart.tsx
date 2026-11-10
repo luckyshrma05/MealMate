@@ -1,139 +1,57 @@
-
 import { useEffect, useState } from "react";
+import { ResponsiveContainer, PieChart, Pie, Cell, Tooltip, Legend } from "recharts";
+import { getAllConsumptionRecords } from "../../services/consumptionService";
 
-import {
-    ResponsiveContainer,
-    PieChart,
-    Pie,
-    Cell,
-    Tooltip,
-    Legend,
-} from "recharts";
-
-interface ConsumptionRecord {
-    ingredientName: string;
-    price: number;
-    actualQty: number;
-}
-
-interface Ingredient {
-    id: string;
-    name: string;
-    category?: string;
-}
-
-interface FoodCostData {
-    name: string;
-    value: number;
-}
-
-const COLORS = [
-    "#2563eb",
-    "#0d9488",
-    "#f59e0b",
-    "#8b5cf6",
-    "#64748b",
-    "#ec4899",
-    "#0891b2",
-    "#65a30d",
-];
+const COLORS = ["#2563eb", "#0d9488", "#f59e0b", "#8b5cf6", "#64748b", "#ec4899"];
 
 function FoodCostChart() {
-    const [foodCostData, setFoodCostData] = useState<FoodCostData[]>([]);
-    const [totalCost, setTotalCost] = useState(0);
+    const [chartData, setChartData] = useState<any[]>([]);
+    const [totalVolume, setTotalVolume] = useState(0);
 
     useEffect(() => {
-        try {
-            const savedConsumption =
-                localStorage.getItem("mealmate_consumption");
+        const loadChart = async () => {
+            try {
+                const records = await getAllConsumptionRecords();
+                const categoryVolume = new Map<string, number>();
 
-            const savedIngredients =
-                localStorage.getItem("mealmate_ingredients");
+                records.forEach((record: any) => {
+                    const consumed = Number(record.consumed || 0);
+                    if (consumed <= 0) return;
 
-            const consumption: ConsumptionRecord[] =
-                savedConsumption ? JSON.parse(savedConsumption) : [];
+                    const category = record.dish?.category || "Uncategorized";
+                    categoryVolume.set(category, (categoryVolume.get(category) || 0) + consumed);
+                });
 
-            const ingredients: Ingredient[] =
-                savedIngredients ? JSON.parse(savedIngredients) : [];
+                const data = Array.from(categoryVolume.entries()).map(([name, value]) => ({ name, value }));
+                const total = data.reduce((sum, item) => sum + item.value, 0);
 
-            const categoryCosts = new Map<string, number>();
-
-            consumption.forEach((record) => {
-                const actualCost =
-                    Number(record.actualQty || 0) *
-                    Number(record.price || 0);
-
-                if (actualCost <= 0) return;
-
-                const ingredient = ingredients.find(
-                    (item) =>
-                        item.name.trim().toLowerCase() ===
-                        record.ingredientName.trim().toLowerCase()
-                );
-
-                const category = ingredient?.category || "Others";
-
-                categoryCosts.set(
-                    category,
-                    (categoryCosts.get(category) || 0) + actualCost
-                );
-            });
-
-            const data = Array.from(categoryCosts.entries()).map(
-                ([name, value]) => ({
-                    name,
-                    value,
-                })
-            );
-
-            const total = data.reduce(
-                (sum, item) => sum + item.value,
-                0
-            );
-
-            setFoodCostData(data);
-            setTotalCost(total);
-        } catch (error) {
-            console.error("Unable to load food cost data:", error);
-            setFoodCostData([]);
-            setTotalCost(0);
-        }
+                setChartData(data);
+                setTotalVolume(total);
+            } catch (error) {
+                console.error("Unable to load consumption data:", error);
+            }
+        };
+        loadChart();
     }, []);
-
-    const formatCurrency = (value: number) =>
-        `₹${value.toLocaleString("en-IN", {
-            maximumFractionDigits: 2,
-        })}`;
 
     return (
         <div className="chart-card">
             <div className="chart-heading">
-                <h3>Food Cost Analysis</h3>
-                <p>Actual ingredient expenditure by category</p>
+                <h3>Consumption by Category</h3>
+                <p>Total volume consumed across dish categories</p>
             </div>
 
-            {foodCostData.length > 0 ? (
+            {chartData.length > 0 ? (
                 <>
-                    <div style={{
-                        textAlign: "center",
-                        marginBottom: "8px",
-                    }}>
-                        <span style={{
-                            color: "#64748b",
-                            fontSize: "13px",
-                        }}>
-                            Total Consumption Cost
-                        </span>
-
-                        <h3 style={{ margin: "4px 0" }}>
-                            {formatCurrency(totalCost)}
-                        </h3>
+                    <div style={{ textAlign: "center", marginBottom: "8px" }}>
+                        <span style={{ color: "#64748b", fontSize: "13px" }}>Total Volume Consumed</span>
+                        <h3 style={{ margin: "4px 0" }}>{totalVolume.toFixed(1)} units</h3>
                     </div>
 
                     <ResponsiveContainer width="100%" height={280}>
                         <PieChart>
                             <Pie
-                                data={foodCostData}
+                                data={chartData}
                                 dataKey="value"
                                 nameKey="name"
                                 cx="50%"
@@ -141,35 +59,20 @@ function FoodCostChart() {
                                 innerRadius={65}
                                 outerRadius={100}
                                 paddingAngle={4}
-                                label={({ percent }) =>
-                                    `${((percent ?? 0) * 100).toFixed(1)}%`
-                                }
+                                label={({ percent }) => `${((percent ?? 0) * 100).toFixed(1)}%`}
                             >
-                                {foodCostData.map((entry, index) => (
-                                    <Cell
-                                        key={entry.name}
-                                        fill={COLORS[index % COLORS.length]}
-                                    />
+                                {chartData.map((entry, index) => (
+                                    <Cell key={entry.name} fill={COLORS[index % COLORS.length]} />
                                 ))}
                             </Pie>
-
-                            <Tooltip
-                                formatter={(value) =>
-                                    formatCurrency(Number(value))
-                                }
-                            />
-
+                            <Tooltip formatter={(value) => `${Number(value).toFixed(1)} units`} />
                             <Legend />
                         </PieChart>
                     </ResponsiveContainer>
                 </>
             ) : (
-                <p style={{
-                    textAlign: "center",
-                    padding: "100px 10px",
-                    color: "#64748b",
-                }}>
-                    No actual consumption cost data available yet.
+                <p style={{ textAlign: "center", padding: "100px 10px", color: "#64748b" }}>
+                    No consumption data available yet.
                 </p>
             )}
         </div>

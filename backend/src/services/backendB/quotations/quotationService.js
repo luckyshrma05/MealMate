@@ -64,6 +64,13 @@ class QuotationService {
       include: { items: true, event: true }
     });
   }
+
+  async getAllQuotations() {
+    return prisma.quotation.findMany({
+      include: { items: true },
+      orderBy: { createdAt: "desc" }
+    });
+  }
 }
 
 export default new QuotationService();

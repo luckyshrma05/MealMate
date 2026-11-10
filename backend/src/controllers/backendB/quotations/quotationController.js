@@ -173,3 +173,12 @@ export const getQuotationById = async (req, res) => {
     });
   }
 };
+
+export const getAllQuotations = async (req, res) => {
+  try {
+    const quotations = await quotationService.getAllQuotations();
+    return res.status(200).json({ success: true, data: quotations });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};

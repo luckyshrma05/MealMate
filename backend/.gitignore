@@ -11,3 +11,5 @@ node_modules/
 
 .neon-setup-backup-*/
 backups/
+
+codebase2.txt
