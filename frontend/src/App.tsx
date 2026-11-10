@@ -17,13 +17,14 @@ import ConsumptionPage from "./pages/consumption/ConsumptionPage";
 import ReportsPage from "./pages/reports/ReportsPage";
 import RecipesPage from "./pages/recipes/RecipesPage";
 import ConfigurationPage from "./pages/configuration/ConfigurationPage";
+import Signup from "./pages/signup";
 
 function App() {
   return (
     <Routes>
-      
-      <Route path="/login" element={<Login />} />
 
+      <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
       
       <Route path="/dashboard" element={<ProtectedRoute><Dashboard /></ProtectedRoute>} />
       <Route path="/events/new" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
@@ -44,6 +45,8 @@ function App() {
       
       <Route path="/" element={<Navigate to="/login" replace />} />
       <Route path="*" element={<Navigate to="/login" replace />} />
+
+      
     </Routes>
   );
 }
