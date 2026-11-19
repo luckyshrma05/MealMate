@@ -1,8 +1,8 @@
 import { useEffect, useState, useContext } from 'react';
-import { fetchUserEvents } from '../services/eventService';
+import { fetchUserEvents, deleteEvent } from '../services/eventService';
 import { useNavigate } from 'react-router-dom';
 import { AuthContext } from '../context/authContext';
-import { Calendar, Users, Percent, LogOut } from 'lucide-react';
+import { Calendar, Users, Percent, LogOut, Trash2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState<any[]>([]);
@@ -29,13 +29,24 @@ export default function Dashboard() {
     navigate('/login');
   };
 
+  const handleDeleteEvent = async (eventId: string) => {
+    if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
+    
+    try {
+      await deleteEvent(eventId);
+      setEvents(events.filter(event => event.id !== eventId));
+    } catch (error) {
+      console.error("Failed to delete event", error);
+      alert("Failed to delete the event. Please try again.");
+    }
+  };
+
   if (isLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p className="text-gray-500 text-lg">Loading your events...</p></div>;
   }
 
   return (
     <div className="min-h-screen bg-gray-50 pb-12">
-      {/* Navbar */}
       <nav className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center mb-8">
         <h1 className="text-2xl font-bold text-gray-900">MealMate</h1>
         <div className="flex items-center gap-4">
@@ -46,7 +57,6 @@ export default function Dashboard() {
         </div>
       </nav>
 
-      {/* Main Content */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <div>
@@ -77,9 +87,18 @@ export default function Dashboard() {
                 <div className="mb-4 flex-grow">
                   <div className="flex justify-between items-start mb-2">
                     <h3 className="text-xl font-bold text-gray-900">{event.name}</h3>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {event.eventType}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {event.eventType}
+                      </span>
+                      <button 
+                        onClick={() => handleDeleteEvent(event.id)}
+                        className="text-gray-400 hover:text-red-600 transition-colors"
+                        title="Delete Event"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </div>
                   </div>
                   
                   <div className="space-y-2 mt-4 text-sm text-gray-600">

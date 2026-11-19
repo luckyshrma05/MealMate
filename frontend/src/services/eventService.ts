@@ -28,3 +28,9 @@ export const saveEventMenu = async (eventId: string | number, dishes: { dishId: 
   const response = await api.put(`/events/${eventId}/dishes`, { dishes });
   return response.data;
 };
+
+
+export const deleteEvent = async (eventId: string | number) => {
+  const response = await api.delete(`/events/${eventId}`);
+  return response.data;
+};
