@@ -1,14 +1,12 @@
-import { useEffect, useState, useContext } from 'react';
+import { useEffect, useState } from 'react';
 import { fetchUserEvents, deleteEvent } from '../services/eventService';
 import { useNavigate } from 'react-router-dom';
-import { AuthContext } from '../context/authContext';
-import { Calendar, Users, Percent, LogOut, Trash2 } from 'lucide-react';
+import { Calendar, Users, Percent, Trash2 } from 'lucide-react';
 
 export default function Dashboard() {
   const [events, setEvents] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const navigate = useNavigate();
-  const auth = useContext(AuthContext);
 
   useEffect(() => {
     const loadEvents = async () => {
@@ -24,14 +22,9 @@ export default function Dashboard() {
     loadEvents();
   }, []);
 
-  const handleLogout = () => {
-    auth?.logout();
-    navigate('/login');
-  };
-
   const handleDeleteEvent = async (eventId: string) => {
     if (!window.confirm("Are you sure you want to delete this event? This action cannot be undone.")) return;
-    
+
     try {
       await deleteEvent(eventId);
       setEvents(events.filter(event => event.id !== eventId));
@@ -42,28 +35,22 @@ export default function Dashboard() {
   };
 
   if (isLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-gray-50"><p className="text-gray-500 text-lg">Loading your events...</p></div>;
+    return (
+      <div className="min-h-[calc(100vh-65px)] flex items-center justify-center bg-gray-50">
+        <p className="text-gray-500 text-lg">Loading your events...</p>
+      </div>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-12">
-      <nav className="bg-white shadow-sm border-b border-gray-200 px-6 py-4 flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-gray-900">MealMate</h1>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-gray-600 font-medium">Hello, {auth?.user?.name}</span>
-          <button onClick={handleLogout} className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors">
-            <LogOut size={16} /> Logout
-          </button>
-        </div>
-      </nav>
-
+    <div className="min-h-[calc(100vh-65px)] bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center mb-8">
           <div>
             <h2 className="text-3xl font-extrabold text-gray-900">My Events</h2>
             <p className="mt-1 text-sm text-gray-500">Manage and plan menus for your upcoming events.</p>
           </div>
-          <button 
+          <button
             onClick={() => navigate('/events/new')}
             className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2.5 rounded-lg font-medium shadow-sm transition-colors"
           >
@@ -76,7 +63,10 @@ export default function Dashboard() {
             <Calendar className="mx-auto h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-1">No upcoming events</h3>
             <p className="text-gray-500 mb-6">Get started by creating your first event.</p>
-            <button onClick={() => navigate('/events/new')} className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors">
+            <button
+              onClick={() => navigate('/events/new')}
+              className="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-medium transition-colors"
+            >
               Create Event
             </button>
           </div>
@@ -91,7 +81,7 @@ export default function Dashboard() {
                       <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
                         {event.eventType}
                       </span>
-                      <button 
+                      <button
                         onClick={() => handleDeleteEvent(event.id)}
                         className="text-gray-400 hover:text-red-600 transition-colors"
                         title="Delete Event"
@@ -100,7 +90,7 @@ export default function Dashboard() {
                       </button>
                     </div>
                   </div>
-                  
+
                   <div className="space-y-2 mt-4 text-sm text-gray-600">
                     <div className="flex items-center gap-2">
                       <Calendar size={16} className="text-gray-400" />
@@ -116,15 +106,15 @@ export default function Dashboard() {
                     </div>
                   </div>
                 </div>
-                
+
                 <div className="mt-6 flex gap-3 pt-4 border-t border-gray-100">
-                  <button 
+                  <button
                     onClick={() => navigate(`/events/${event.id}/edit`)}
                     className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
                   >
                     Edit Details
                   </button>
-                  <button 
+                  <button
                     onClick={() => navigate(`/events/${event.id}/dishes`)}
                     className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
                   >

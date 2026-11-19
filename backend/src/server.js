@@ -40,3 +40,12 @@ app.get('/api/db-health',async(_req,res)=>{
   catch(e){console.error('Database health check error',e);res.status(500).json({status:'error',message:'Database connection failed'});}
 });
 app.listen(PORT,()=>console.log(`MealMate server running on port ${PORT}`));
+
+
+if (process.env.NODE_ENV !== 'test') {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
+  });
+}
+
+export default app;
