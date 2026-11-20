@@ -34,3 +34,8 @@ export const deleteEvent = async (eventId: string | number) => {
   const response = await api.delete(`/events/${eventId}`);
   return response.data;
 };
+
+export const fetchEventMenu = async (eventId: string) => {
+  const response = await api.get(`/events/${eventId}/dishes`);
+  return response.data;
+};

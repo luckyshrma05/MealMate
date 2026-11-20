@@ -107,18 +107,26 @@ export default function Dashboard() {
                   </div>
                 </div>
 
-                <div className="mt-6 flex gap-3 pt-4 border-t border-gray-100">
+                <div className="mt-6 pt-4 border-t border-gray-100 space-y-2">
+                  <div className="flex gap-3">
                   <button
-                    onClick={() => navigate(`/events/${event.id}/edit`)}
-                    className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
-                  >
-                    Edit Details
-                  </button>
+                      onClick={() => navigate(`/events/${event.id}/edit`)}
+                      className="flex-1 bg-gray-50 hover:bg-gray-100 text-gray-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-gray-200"
+                    >
+                      Edit Details
+                    </button>
+                    <button
+                      onClick={() => navigate(`/events/${event.id}/dishes`)}
+                      className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    >
+                      Select Menu
+                    </button>
+                  </div>
                   <button
-                    onClick={() => navigate(`/events/${event.id}/dishes`)}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                    onClick={() => navigate(`/events/${event.id}/quotation`)}
+                    className="w-full bg-blue-50 hover:bg-blue-100 text-blue-700 px-4 py-2 rounded-lg text-sm font-medium transition-colors border border-blue-200"
                   >
-                    Select Menu
+                    View Quotation
                   </button>
                 </div>
               </div>

@@ -4,7 +4,7 @@ import {
   createQuotation,
   getQuotationsByEvent,
   getQuotationById,
-  getAllQuotations // <-- This was missing!
+  getAllQuotations 
 } from "../../../controllers/backendB/quotations/quotationController.js";
 
 import { authenticate } from "../../../middleware/authMiddleware.js";
@@ -14,7 +14,7 @@ const router = express.Router();
 
 router.use(authenticate);
 
-router.post("/", createQuotation);
+router.post("/", authorizeRoles("ADMIN"), createQuotation);
 router.get("/event/:eventId", getQuotationsByEvent);
 
 

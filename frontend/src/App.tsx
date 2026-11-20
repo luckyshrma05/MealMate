@@ -20,6 +20,8 @@ import ConfigurationPage from "./pages/configuration/ConfigurationPage";
 import Signup from "./pages/signup";
 import Navbar from "./components/Navbar";
 
+import EventQuotation from "./pages/eventQuotation";
+
 function App() {
   return (
     <>
@@ -32,6 +34,7 @@ function App() {
       <Route path="/events/new" element={<ProtectedRoute><CreateEvent /></ProtectedRoute>} />
       <Route path="/events/:eventId/edit" element={<ProtectedRoute><EditEvent /></ProtectedRoute>} />
       <Route path="/events/:eventId/dishes" element={<ProtectedRoute><SelectDishes /></ProtectedRoute>} />
+      <Route path="/events/:eventId/quotation" element={<EventQuotation />} />
 
       
       <Route path="/admin" element={<ProtectedRoute><AdminLayout /></ProtectedRoute>}>

@@ -28,12 +28,53 @@ function clean(kind,body,partial=false){
   }
   return {data};
 }
-export const listCatalog = kind => async(req,res)=>{
-  try{
-    const where=isAdmin(req)?{}:{isActive:true};
-    const records=await prisma[kind].findMany({where,orderBy:{name:'asc'}});
-    return res.json({count:records.length,[kind==='dish'?'dishes':'ingredients']:records});
-  }catch(e){return sendError(res,e,`List ${kind}`);}
+export const listCatalog = kind => async (req, res) => {
+  try {
+    const where = isAdmin(req) ? {} : { isActive: true };
+
+    if (kind === 'dish') {
+      const dishes = await prisma.dish.findMany({
+        where,
+        orderBy: { name: 'asc' },
+        include: {
+          recipeIngredients: {
+            include: {
+              ingredient: {
+                include: { price: true },
+              },
+            },
+          },
+        },
+      });
+
+      const formattedDishes = dishes.map((dish) => {
+        const totalRecipeCost = dish.recipeIngredients.reduce((sum, ri) => {
+          const unitPrice = Number(ri.ingredient?.price?.pricePerUnit || 0);
+          return sum + Number(ri.quantity) * unitPrice;
+        }, 0);
+
+        const pricePerServing =
+          dish.recipeServings > 0
+            ? Number((totalRecipeCost / dish.recipeServings).toFixed(2))
+            : 0;
+
+        if (isAdmin(req)) {
+          return { ...dish, pricePerServing };
+        }
+
+        
+        const { recipeIngredients, ...safeDish } = dish;
+        return { ...safeDish, pricePerServing };
+      });
+
+      return res.json({ count: formattedDishes.length, dishes: formattedDishes });
+    }
+
+    const records = await prisma[kind].findMany({ where, orderBy: { name: 'asc' } });
+    return res.json({ count: records.length, ingredients: records });
+  } catch (e) {
+    return sendError(res, e, `List ${kind}`);
+  }
 };
 export const getCatalog = kind => async(req,res)=>{
   const id=positiveId(req.params.id);

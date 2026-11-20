@@ -9,6 +9,7 @@ import * as eventService from '../services/eventService';
 vi.mock('../services/catalogService');
 vi.mock('../services/eventService');
 
+
 describe('SelectDishes Page (Integration)', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -21,6 +22,7 @@ describe('SelectDishes Page (Integration)', () => {
       { id: 3, name: 'Archived Curry', category: 'Main Course', deletedAt: '2026-10-01T00:00:00Z' },
     ]);
     const saveSpy = vi.spyOn(eventService, 'saveEventMenu').mockResolvedValueOnce({ success: true });
+    vi.spyOn(eventService, 'fetchEventMenu').mockResolvedValueOnce({ dishes: [] });
 
     render(
       <MemoryRouter initialEntries={['/events/12/dishes']}>

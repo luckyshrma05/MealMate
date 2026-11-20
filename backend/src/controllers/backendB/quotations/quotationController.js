@@ -1,7 +1,43 @@
 import { calculatePlan } from "../../../services/calculationService.js";
-
 import prisma from "../../../db.js";
 import quotationService from "../../../services/backendB/quotations/quotationService.js";
+
+// Removes ingredient-level breakdown & unit prices for non-admin users
+const sanitizeQuotationForUser = (quotation) => {
+  if (!quotation || typeof quotation !== "object") return quotation;
+
+  const {
+    items,
+    quotationItems,
+    ingredients,
+    ingredientBreakdown,
+    ingredientCosts,
+    costBreakdown,
+    lineItems,
+    ...safeQuotation
+  } = quotation;
+
+  // Defensive guard: strip any other array field containing ingredient-level pricing
+  for (const [key, value] of Object.entries(safeQuotation)) {
+    if (
+      Array.isArray(value) &&
+      value.some(
+        (entry) =>
+          entry &&
+          typeof entry === "object" &&
+          ("pricePerUnit" in entry ||
+            "unitPrice" in entry ||
+            "ingredientId" in entry ||
+            "ingredientName" in entry ||
+            "ingredient" in entry)
+      )
+    ) {
+      delete safeQuotation[key];
+    }
+  }
+
+  return safeQuotation;
+};
 
 export const createQuotation = async (req, res) => {
   const { eventId } = req.body ?? {};
@@ -38,8 +74,7 @@ export const createQuotation = async (req, res) => {
       });
     }
 
-    if (req.user.role !== "ADMIN" &&
-        event.userId !== req.user.id) {
+    if (req.user.role !== "ADMIN" && event.userId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: "Access denied"
@@ -53,7 +88,6 @@ export const createQuotation = async (req, res) => {
       });
     }
 
-    // Calculate ingredients from the stored event menu.
     const plan = calculatePlan(event);
 
     const ingredients = plan.ingredients.map(item => ({
@@ -62,7 +96,6 @@ export const createQuotation = async (req, res) => {
       unit: item.unit
     }));
 
-    // Save a quotation with historical price snapshots.
     const quotation = await quotationService.createQuotation(
       eventId,
       ingredients
@@ -73,14 +106,15 @@ export const createQuotation = async (req, res) => {
       message: "Quotation created successfully",
       data: quotation
     });
-
   } catch (error) {
     console.error("Create quotation error:", error);
 
-    if (error.message?.includes("has no recipe") ||
-        error.message?.includes("Invalid recipe") ||
-        error.message?.includes("Price not found") ||
-        error.message?.includes("Unit mismatch")) {
+    if (
+      error.message?.includes("has no recipe") ||
+      error.message?.includes("Invalid recipe") ||
+      error.message?.includes("Price not found") ||
+      error.message?.includes("Unit mismatch")
+    ) {
       return res.status(422).json({
         success: false,
         message: error.message
@@ -124,10 +158,14 @@ export const getQuotationsByEvent = async (req, res) => {
     }
 
     const quotations = await quotationService.getQuotationsByEvent(id);
+    const data =
+      req.user.role === "ADMIN"
+        ? quotations
+        : quotations.map(sanitizeQuotationForUser);
 
     return res.status(200).json({
       success: true,
-      data: quotations
+      data
     });
   } catch (error) {
     console.error("Get quotations error:", error);
@@ -151,19 +189,21 @@ export const getQuotationById = async (req, res) => {
       });
     }
 
-    if (
-      req.user.role !== "ADMIN" &&
-      quotation.event.userId !== req.user.id
-    ) {
+    if (req.user.role !== "ADMIN" && quotation.event.userId !== req.user.id) {
       return res.status(403).json({
         success: false,
         message: "You are not authorized to view this quotation"
       });
     }
 
+    const data =
+      req.user.role === "ADMIN"
+        ? quotation
+        : sanitizeQuotationForUser(quotation);
+
     return res.status(200).json({
       success: true,
-      data: quotation
+      data
     });
   } catch (error) {
     console.error("Get quotation error:", error);
